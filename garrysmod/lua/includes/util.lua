@@ -14,7 +14,7 @@ Format = string.format
 -----------------------------------------------------------]]
 function IsTableOfEntitiesValid( tab )
 
-	if ( !tab ) then return false end
+	if (!tab) then return false end
 
 	for k, v in pairs( tab ) do
 		if ( !IsValid( v ) ) then return false end
@@ -35,32 +35,25 @@ include( "util/color.lua" )
 --[[---------------------------------------------------------
 	Prints a table to the console
 -----------------------------------------------------------]]
-function PrintTable( t, indent, done )
+function PrintTable ( t, indent, done )
 
 	done = done or {}
 	indent = indent or 0
-	local keys = table.GetKeys( t )
 
-	table.sort( keys, function( a, b )
-		if ( isnumber( a ) && isnumber( b ) ) then return a < b end
-		return tostring( a ) < tostring( b )
-	end )
+	for key, value in pairs (t) do
 
-	for i = 1, #keys do
-		key = keys[ i ]
-		value = t[ key ]
-		Msg( string.rep( "\t", indent ) )
+		Msg( string.rep ("\t", indent) )
 
-		if  ( istable( value ) && !done[ value ] ) then
+		if  ( istable(value) && !done[value] ) then
 
-			done[ value ] = true
-			Msg( tostring( key ) .. ":" .. "\n" )
-			PrintTable ( value, indent + 2, done )
+			done [value] = true
+			Msg( tostring(key) .. ":" .. "\n" );
+			PrintTable (value, indent + 2, done)
 
 		else
 
-			Msg( tostring( key ) .. "\t=\t" )
-			Msg( tostring( value ) .. "\n" )
+			Msg( tostring (key) .. "\t=\t" )
+			Msg( tostring(value) .. "\n" )
 
 		end
 
@@ -68,6 +61,100 @@ function PrintTable( t, indent, done )
 
 end
 
+--[[---------------------------------------------------------
+	Prints also a table to the console but a bit nicer
+	PrintTableDepth( Table toPrint, Number depth, Number max )
+	toPrint: 	The table to be printed
+	depth: 		Amount of child-tables to open (-1 = inf, -1 <= depth)
+	max: 		Amount of elements to print per table (-1 = inf, -1 <= max)
+-----------------------------------------------------------]]
+local tcol = {
+	["string"] = Color(130,130,130),
+	["table"] = Color(160,50,50),
+	["number"] = Color(255,130,0),
+	["Vector"] = Color(255,130,0),
+	["Angle"] = Color(255,130,0),
+	["Color"] = Color(255,130,0),
+	["boolean"] = Color(0,255,160),
+	["function"] = Color(20,130,180)
+}
+
+local bc = Color(120,255,70) 	--bracket color
+local ec = Color(200,200,50) 	--equal sign color
+local nc = Color(255,255,255) 	--normal color
+local sc = Color(180,180,180)	--shadow color
+local cc = Color(50,150,50)		--comment color
+local tc = Color(70,200,255) 	--type function color
+
+tostring2 = function(val)
+	local tp = type(val)
+	local tco = tcol[tp] or Color(255,255,255)
+	if tp == "string" then
+		MsgC(tco,"\""..string.Replace(val,"\n","\\n").."\"",nc,",\n")
+	elseif tp == "Vector" then
+		MsgC(tc,"Vector",nc,"(",tco,val.x,nc,", ",tco,val.y,nc,", ",tco,val.z,nc,"),\n")
+	elseif tp == "Angle" then
+		MsgC(tc,"Angle",nc,"(",tco,val.p,nc,", ",tco,val.y,nc,", ",tco,val.r,nc,"),\n")
+	elseif tp == "Color" then
+		if val.a != nil then
+			MsgC(tc,"Color",nc,"(",tco,val.p,nc,", ",tco,val.y,nc,", ",tco,val.r,nc,", ",tco,val.a,nc,"),\n")
+		else
+			MsgC(tc,"Color",nc,"(",tco,val.p,nc,", ",tco,val.y,nc,", ",tco,val.r,nc,"),\n")
+		end
+	elseif tp == "function" then
+		MsgC(tco,"\""..tostring(val).."\"",nc,",\n")
+	else
+		MsgC(tco,tostring(val),nc,",\n")
+	end
+end
+
+local function tbl_rec(tbl,depth,current,max)
+	current = current + 1
+	local indent = string.rep( "\t", current )
+	if current <= depth or depth == -1 then
+		local c = 0
+		local c2 = 0
+		for k,v in pairs(tbl) do
+			c = c + 1
+			if c <= max or max == -1 then
+				if type(v) == "table" then
+					MsgC(sc,indent.."[\"",nc,k,sc,"\"] ",ec,"=",nc," ",bc,"{\n")
+					tbl_rec(v,depth,current,max)
+					MsgC(sc,indent,bc,"}",nc,",\n")
+				else
+					MsgC(sc,indent.."[\"",nc,k,sc,"\"] ",ec,"=",nc," ")
+					tostring2(v)
+				end
+			else
+				c2 = c2 + 1
+			end
+		end
+		if c2 > 0 then
+			if c2 != 1 then
+				MsgC(cc,indent.."/* ",c2," more elements. (amount restriced)*/\n")
+			else
+				MsgC(cc,indent.."/* ",c2," more element. (amount restriced)*/\n")
+			end
+		end
+	else
+		local c = 0
+		for k,v in pairs(tbl) do
+			c = c + 1
+		end
+		if c != 1 then
+			MsgC(cc,indent.."/* ",c," elements. (depth restriced)*/\n")
+		else
+			MsgC(cc,indent.."/* ",c," element. (depth restriced)*/\n")
+		end
+	end
+end
+
+function PrintTableDepth(tab,depth,max)
+	if tab == nil or type(tab) != "table" or depth == nil or type(depth) != "number" or depth < -1 or type(max) != "number" or max < -1 or max == nil then MsgC(Color(255,0,0),"\n\nManual:",Color(200,255,255),"\nPrintTableDepth( Table toPrint, Number depth, Number max )\ntoPrint: \tThe table to be printed\ndepth: \t\tAmount of child-tables to open (-1 = inf, -1 <= depth)\nmax: \t\tAmount of elements to print per table (-1 = inf, -1 <= max)\n\n") return end
+	MsgC(tc,"ROOT ",ec,"=",nc," ",bc,"{\n")
+	tbl_rec(tab,depth,0,max)
+	MsgC(bc,"}\n\n")
+end
 
 --[[---------------------------------------------------------
    Returns a random vector
@@ -108,13 +195,13 @@ end
 
 -- Some nice globals so we don't keep creating objects for no reason
 
-vector_origin		= Vector( 0, 0, 0 )
-vector_up			= Vector( 0, 0, 1 )
+vector_origin 		= Vector( 0, 0, 0 )
+vector_up	 		= Vector( 0, 0, 1 )
 angle_zero			= Angle( 0, 0, 0 )
 
-color_white			= Color( 255, 255, 255, 255 )
-color_black			= Color( 0, 0, 0, 255 )
-color_transparent	= Color( 255, 255, 255, 0 )
+color_white 		= Color( 255, 	255, 	255, 	255 )
+color_black 		= Color( 0, 	0, 		0, 		255 )
+color_transparent 	= Color( 255, 	255, 	255, 	0 )
 
 
 --[[---------------------------------------------------------
@@ -131,8 +218,8 @@ function IncludeCS( filename )
 end
 
 -- Globals..
-FORCE_STRING	= 1
-FORCE_NUMBER	= 2
+FORCE_STRING 	= 1
+FORCE_NUMBER 	= 2
 FORCE_BOOL		= 3
 
 --[[---------------------------------------------------------
@@ -162,6 +249,16 @@ function AccessorFunc( tab, varname, name, iForce )
 end
 
 --[[---------------------------------------------------------
+   AccessorFuncNW - FOR ENTITIES ONLY
+   Quickly make Get/Set accessor fuctions on the specified entity
+-----------------------------------------------------------]]
+function AccessorFuncNW( tab, varname, name, varDefault, iForce )
+
+	ErrorNoHalt( "[AccessorFuncNW] is depreciated. Look up 'SetupDataTables'. Sorry :(\n" );
+
+end
+
+--[[---------------------------------------------------------
 	Returns true if object is valid (is not nil and IsValid)
 -----------------------------------------------------------]]
 function IsValid( object )
@@ -178,10 +275,10 @@ end
 -----------------------------------------------------------]]
 function SafeRemoveEntity( ent )
 
-	if ( !IsValid( ent ) || ent:IsPlayer() ) then return end
-
+	if ( !ent || !ent:IsValid() || ent:IsPlayer() ) then return end
+	
 	ent:Remove()
-
+	
 end
 
 --[[---------------------------------------------------------
@@ -189,10 +286,10 @@ end
 -----------------------------------------------------------]]
 function SafeRemoveEntityDelayed( ent, timedelay )
 
-	if ( !IsValid( ent ) || ent:IsPlayer() ) then return end
-
+	if (!ent || !ent:IsValid()) then return end
+	
 	timer.Simple( timedelay, function() SafeRemoveEntity( ent ) end )
-
+	
 end
 
 --[[---------------------------------------------------------
@@ -276,58 +373,81 @@ end
 --[[---------------------------------------------------------
 	Given a number, returns the right 'th
 -----------------------------------------------------------]]
-local STNDRD_TBL = {"st", "nd", "rd"}
 function STNDRD( num )
-	num = num % 100
-	if ( num > 10 and num < 20 ) then
+	local n = tonumber( string.Right( tostring( num ), 1 ) )
+	
+	if ( num > 3 and num < 21 ) then
 		return "th"
+	elseif ( n == 1 ) then
+		return "st"
+	elseif ( n == 2 ) then
+		return "nd"
+	elseif ( n == 3 ) then
+		return "rd"
 	end
-
-	return STNDRD_TBL[ num % 10 ] or "th"
+	
+	return "th"
 end
 
 
 --[[---------------------------------------------------------
 	From Simple Gamemode Base (Rambo_9)
 -----------------------------------------------------------]]
-function TimedSin( freq, min, max, offset )
-	return math.sin( freq * math.pi * 2 * CurTime() + offset ) * ( max - min ) * 0.5 + min
+function TimedSin(freq,min,max,offset)
+	return math.sin(freq * math.pi * 2 * CurTime() + offset) * (max-min) * 0.5 + min
 end 
 
 --[[---------------------------------------------------------
 	From Simple Gamemode Base (Rambo_9)
 -----------------------------------------------------------]]
-function TimedCos( freq, min, max, offset )
-	return math.cos( freq * math.pi * 2 * CurTime() + offset ) * ( max - min ) * 0.5 + min
+function TimedCos(freq,min,max,offset)
+	return math.cos(freq * math.pi * 2 * CurTime() + offset) * (max-min) * 0.5 + min
 end 
 
 --[[---------------------------------------------------------
 	IsEnemyEntityName
 -----------------------------------------------------------]]
-local EnemyNames = {
-	npc_antlion = true, npc_antlionguard = true, npc_breen = true, npc_combine_s = true, 
-	npc_cscanner = true, npc_fastzombie = true, npc_fastzombie_torso = true, npc_gman = true, 
-	npc_headcrab = true, npc_headcrab_fast = true, npc_headcrab_poison = true, npc_hunter = true, 
-	npc_manhack = true, npc_poisonzombie = true, npc_zombie = true, npc_zombie_torso = true
-}
-
 function IsEnemyEntityName( victimtype )
 
-	return EnemyNames[ victimtype ] or false
+	if ( victimtype == "npc_combine_s" ) then return true; end
+	if ( victimtype == "npc_cscanner" ) then return true; end
+	if ( victimtype == "npc_manhack" ) then return true; end
+	if ( victimtype == "npc_hunter" ) then return true; end
+	if ( victimtype == "npc_antlion" ) then return true; end
+	if ( victimtype == "npc_antlionguard" ) then return true; end
+	if ( victimtype == "npc_antlion_worker" ) then return true; end
+	if ( victimtype == "npc_fastzombie_torso" ) then return true; end
+	if ( victimtype == "npc_fastzombie" ) then return true; end
+	if ( victimtype == "npc_headcrab" ) then return true; end
+	if ( victimtype == "npc_headcrab_fast" ) then return true; end
+	if ( victimtype == "npc_poisonzombie" ) then return true; end
+	if ( victimtype == "npc_headcrab_poison" ) then return true; end
+	if ( victimtype == "npc_zombie" ) then return true; end
+	if ( victimtype == "npc_zombie_torso" ) then return true; end
+	if ( victimtype == "npc_zombine" ) then return true; end
+	if ( victimtype == "npc_gman" ) then return true; end
+	if ( victimtype == "npc_breen" ) then return true; end
+
+	return false
 
 end
 
 --[[---------------------------------------------------------
 	IsFriendEntityName
 -----------------------------------------------------------]]
-local FriendlyNames = {
-	 npc_alyx = true, npc_barney = true, npc_citizen = true, npc_eli = true, npc_kleiner = true, 
-	 npc_magnusson = true, npc_monk = true, npc_mossman = true, npc_vortigaunt = true
-}
-
 function IsFriendEntityName( victimtype )
 
-	return FriendlyNames[ victimtype ] or false
+	if ( victimtype == "npc_monk" ) then return true; end
+	if ( victimtype == "npc_alyx" ) then return true; end
+	if ( victimtype == "npc_barney" ) then return true; end
+	if ( victimtype == "npc_citizen" ) then return true; end
+	if ( victimtype == "npc_kleiner" ) then return true; end
+	if ( victimtype == "npc_magnusson" ) then return true; end
+	if ( victimtype == "npc_eli" ) then return true; end
+	if ( victimtype == "npc_mossman" ) then return true; end
+	if ( victimtype == "npc_vortigaunt" ) then return true; end
+
+	return false
 
 end
 
@@ -367,7 +487,7 @@ end
 -- You can use this function to add your own CLASS_ var.
 -- Adding in this way will ensure your CLASS_ doesn't collide with another
 --
--- ie Add_NPC_Class( "MY_CLASS" )
+-- ie  Add_NPC_Class( "MY_CLASS" )
 
 function Add_NPC_Class( name )
 
@@ -375,3 +495,4 @@ function Add_NPC_Class( name )
 	NUM_AI_CLASSES = NUM_AI_CLASSES + 1
 
 end
+
